@@ -36,6 +36,22 @@
             margin-bottom: 15px;
         }
 
+        .score-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .score-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #374151;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+
         .problem-area {
             background: white;
             padding: 30px;
@@ -76,6 +92,18 @@
             padding: 15px 25px;
             border-radius: 25px;
             animation: pulse 1s infinite;
+        }
+
+        .clear-message {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            padding: 30px 40px;
+            border-radius: 25px;
+            animation: rainbow 2s ease-in-out infinite, bounce 1s infinite;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .problem-display {
@@ -268,12 +296,29 @@
             background: #d97706;
         }
 
+        .btn-restart {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-restart:hover {
+            background: #7c3aed;
+        }
+
         .confetti {
             position: fixed;
             width: 16px;
             height: 16px;
             border-radius: 50%;
             animation: ping 2s infinite;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .star {
+            position: fixed;
+            font-size: 2rem;
+            animation: star-fall 3s linear infinite;
             z-index: 1000;
             pointer-events: none;
         }
@@ -296,12 +341,35 @@
                 opacity: 0;
             }
         }
+
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes star-fall {
+            0% {
+                opacity: 1;
+                transform: translateY(-100vh) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1 class="title">かずとしき２</h1>
+        </div>
+
+        <div class="score-area">
+            <div class="score-display">
+                せいかい: <span id="correctCount">0</span> / 5
+            </div>
         </div>
 
         <div class="problem-area">
@@ -329,10 +397,14 @@
                 <input type="text" class="formula-input" id="answerInput" placeholder="？">
             </div>
 
-            <div class="buttons">
+            <div class="buttons" id="gameButtons">
                 <button class="btn btn-check" onclick="checkAnswer()">✓ こたえを かくにん</button>
                 <button class="btn btn-reset" onclick="resetBlocks()">🔄 ぶろっく もどす</button>
                 <button class="btn btn-new" onclick="generateNewProblem()">✨ あたらしい もんだい</button>
+            </div>
+
+            <div class="buttons" id="clearButtons" style="display: none;">
+                <button class="btn btn-restart" onclick="restartGame()">🌟 もういちど はじめから</button>
             </div>
         </div>
     </div>
@@ -344,8 +416,12 @@
         let draggedElement = null;
         let originalPositions = new Map();
         let dragOffset = { x: 0, y: 0 };
+        let correctCount = 0;
+        let isGameCleared = false;
 
         function generateRandomProblem() {
+            if (isGameCleared) return;
+            
             firstNum = Math.floor(Math.random() * 9) + 10; // 10-18
             const maxSecondNum = Math.min(9, 19 - firstNum); // 答えが19以下になるよう制限
             secondNum = Math.floor(Math.random() * maxSecondNum) + 1;  // 1から制限値まで
@@ -482,15 +558,31 @@
             hideMessage();
         }
 
+        function updateScore() {
+            document.getElementById('correctCount').textContent = correctCount;
+        }
+
         function checkAnswer() {
+            if (isGameCleared) return;
+            
             const userAnswer = parseInt(document.getElementById('answerInput').value);
             
             if (userAnswer === correctAnswer) {
-                showSuccessMessage();
-                setTimeout(() => {
-                    hideMessage();
-                    generateNewProblem();
-                }, 2000);
+                correctCount++;
+                updateScore();
+                
+                if (correctCount >= 5) {
+                    showClearMessage();
+                    isGameCleared = true;
+                    document.getElementById('gameButtons').style.display = 'none';
+                    document.getElementById('clearButtons').style.display = 'flex';
+                } else {
+                    showSuccessMessage();
+                    setTimeout(() => {
+                        hideMessage();
+                        generateNewProblem();
+                    }, 2000);
+                }
             } else {
                 showErrorMessage();
                 setTimeout(() => {
@@ -524,6 +616,45 @@
             messageArea.innerHTML = '<div class="message error-message">😔 もういちど、かんがえましょう 😔</div>';
         }
 
+        function showClearMessage() {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = '<div class="message clear-message">🏆✨ おめでとう！ぜんぶ せいかい！✨🏆</div>';
+            
+            // 星の雨エフェクト
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.innerHTML = ['⭐', '🌟', '✨', '💫'][Math.floor(Math.random() * 4)];
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.animationDelay = Math.random() * 2 + 's';
+                    star.style.animationDuration = (3 + Math.random() * 2) + 's';
+                    document.body.appendChild(star);
+                    
+                    setTimeout(() => {
+                        star.remove();
+                    }, 5000);
+                }, i * 200);
+            }
+            
+            // 追加の紙吹雪
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = Math.random() * 100 + 'vh';
+                    confetti.style.backgroundColor = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'][i % 6];
+                    confetti.style.animationDelay = Math.random() * 3 + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }, i * 100);
+            }
+        }
+
         function hideMessage() {
             const messageArea = document.getElementById('messageArea');
             messageArea.innerHTML = '';
@@ -534,8 +665,19 @@
             hideMessage();
         }
 
+        function restartGame() {
+            correctCount = 0;
+            isGameCleared = false;
+            updateScore();
+            document.getElementById('gameButtons').style.display = 'flex';
+            document.getElementById('clearButtons').style.display = 'none';
+            hideMessage();
+            generateRandomProblem();
+        }
+
         // 初期化
         window.onload = function() {
+            updateScore();
             generateRandomProblem();
         };
     </script>
